@@ -58,8 +58,17 @@ from .ard import (
     ARDMediathekIE,
 )
 from .arte import (
+    ArteTvIE,
     ArteTVPlus7IE,
+    ArteTVCreativeIE,
+    ArteTVConcertIE,
+    ArteTVInfoIE,
+    ArteTVFutureIE,
+    ArteTVCinemaIE,
+    ArteTVDDCIE,
+    ArteTVMagazineIE,
     ArteTVEmbedIE,
+    TheOperaPlatformIE,
     ArteTVPlaylistIE,
 )
 from .asiancrush import (
