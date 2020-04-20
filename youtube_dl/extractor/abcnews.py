@@ -15,13 +15,10 @@ class AbcNewsVideoIE(AMPIE):
     IE_NAME = 'abcnews:video'
     _VALID_URL = r'''(?x)
                     https?://
+                        abcnews\.go\.com/
                         (?:
-                            abcnews\.go\.com/
-                            (?:
-                                [^/]+/video/(?P<display_id>[0-9a-z-]+)-|
-                                video/embed\?.*?\bid=
-                            )|
-                            fivethirtyeight\.abcnews\.go\.com/video/embed/\d+/
+                            [^/]+/video/(?P<display_id>[0-9a-z-]+)-|
+                            video/embed\?.*?\bid=
                         )
                         (?P<id>\d+)
                     '''
