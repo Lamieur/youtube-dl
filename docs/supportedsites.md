@@ -58,8 +58,16 @@
  - **ARD:mediathek**
  - **ARDBetaMediathek**
  - **Arkena**
+ - **arte.tv**
  - **arte.tv:+7**
+ - **arte.tv:cinema**
+ - **arte.tv:concert**
+ - **arte.tv:creative**
+ - **arte.tv:ddc**
  - **arte.tv:embed**
+ - **arte.tv:future**
+ - **arte.tv:info**
+ - **arte.tv:magazine**
  - **arte.tv:playlist**
  - **AsianCrush**
  - **AsianCrushPlaylist**
@@ -305,7 +313,9 @@
  - **FrontendMastersCourse**
  - **FrontendMastersLesson**
  - **Funimation**
- - **Funk**
+ - **FunkChannel**
+ - **FunkMix**
+ - **FunnyOrDie**
  - **Fusion**
  - **Fux**
  - **FXNetworks**
@@ -886,6 +896,7 @@
  - **TF1**
  - **TFO**
  - **TheIntercept**
+ - **theoperaplatform**
  - **ThePlatform**
  - **ThePlatformFeed**
  - **TheScene**

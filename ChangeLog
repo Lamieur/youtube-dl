@@ -1,4 +1,4 @@
-version 2019.07.12
+version <unreleased>
 
 Core
 + [adobepass] Add support for AT&T U-verse (mso ATT) (#13938, #21016)
