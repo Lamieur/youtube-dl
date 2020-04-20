@@ -223,8 +223,6 @@
  - **DiscoveryNetworksDe**
  - **DiscoveryVR**
  - **Disney**
- - **dlive:stream**
- - **dlive:vod**
  - **Dotsub**
  - **DouyuShow**
  - **DouyuTV**: 斗鱼
@@ -450,7 +448,6 @@
  - **linkedin:learning:course**
  - **LinuxAcademy**
  - **LiTV**
- - **LiveJournal**
  - **LiveLeak**
  - **LiveLeakEmbed**
  - **livestream**
@@ -757,6 +754,7 @@
  - **rtve.es:television**
  - **RTVNH**
  - **RTVS**
+ - **Rudo**
  - **RUHD**
  - **rutube**: Rutube videos
  - **rutube:channel**: Rutube channels
