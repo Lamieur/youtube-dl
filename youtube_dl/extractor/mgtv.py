@@ -82,7 +82,6 @@ class MGTVIE(InfoExtractor):
                 'http_headers': {
                     'Referer': url,
                 },
-                'format_note': stream.get('name'),
             })
         self._sort_formats(formats)
 
