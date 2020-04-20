@@ -5,7 +5,6 @@ import re
 from .common import InfoExtractor
 from ..utils import (
     ExtractorError,
-    merge_dicts,
     orderedSet,
     parse_duration,
     parse_resolution,
@@ -27,8 +26,6 @@ class SpankBangIE(InfoExtractor):
             'description': 'dillion harper masturbates on a bed',
             'thumbnail': r're:^https?://.*\.jpg$',
             'uploader': 'silly2587',
-            'timestamp': 1422571989,
-            'upload_date': '20150129',
             'age_limit': 18,
         }
     }, {
@@ -116,29 +113,26 @@ class SpankBangIE(InfoExtractor):
 
         self._sort_formats(formats)
 
-        info = self._search_json_ld(webpage, video_id, default={})
-
         title = self._html_search_regex(
-            r'(?s)<h1[^>]*>(.+?)</h1>', webpage, 'title', default=None)
+            r'(?s)<h1[^>]*>(.+?)</h1>', webpage, 'title')
         description = self._search_regex(
             r'<div[^>]+\bclass=["\']bottom[^>]+>\s*<p>[^<]*</p>\s*<p>([^<]+)',
-            webpage, 'description', default=None)
-        thumbnail = self._og_search_thumbnail(webpage, default=None)
-        uploader = self._html_search_regex(
-            (r'(?s)<li[^>]+class=["\']profile[^>]+>(.+?)</a>',
-             r'class="user"[^>]*><img[^>]+>([^<]+)'),
+            webpage, 'description', fatal=False)
+        thumbnail = self._og_search_thumbnail(webpage)
+        uploader = self._search_regex(
+            r'class="user"[^>]*><img[^>]+>([^<]+)',
             webpage, 'uploader', default=None)
         duration = parse_duration(self._search_regex(
             r'<div[^>]+\bclass=["\']right_side[^>]+>\s*<span>([^<]+)',
-            webpage, 'duration', default=None))
+            webpage, 'duration', fatal=False))
         view_count = str_to_int(self._search_regex(
-            r'([\d,.]+)\s+plays', webpage, 'view count', default=None))
+            r'([\d,.]+)\s+plays', webpage, 'view count', fatal=False))
 
         age_limit = self._rta_search(webpage)
 
-        return merge_dicts({
+        return {
             'id': video_id,
-            'title': title or video_id,
+            'title': title,
             'description': description,
             'thumbnail': thumbnail,
             'uploader': uploader,
@@ -146,8 +140,7 @@ class SpankBangIE(InfoExtractor):
             'view_count': view_count,
             'formats': formats,
             'age_limit': age_limit,
-        }, info
-        )
+        }
 
 
 class SpankBangPlaylistIE(InfoExtractor):
