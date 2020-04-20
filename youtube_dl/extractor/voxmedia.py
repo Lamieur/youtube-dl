@@ -4,10 +4,7 @@ from __future__ import unicode_literals
 from .common import InfoExtractor
 from .once import OnceIE
 from ..compat import compat_urllib_parse_unquote
-from ..utils import (
-    ExtractorError,
-    int_or_none,
-)
+from ..utils import ExtractorError
 
 
 class VoxMediaVolumeIE(OnceIE):
@@ -16,43 +13,18 @@ class VoxMediaVolumeIE(OnceIE):
     def _real_extract(self, url):
         video_id = self._match_id(url)
         webpage = self._download_webpage(url, video_id)
-
-        setup = self._parse_json(self._search_regex(
-            r'setup\s*=\s*({.+});', webpage, 'setup'), video_id)
-        video_data = setup.get('video') or {}
-        info = {
-            'id': video_id,
-            'title': video_data.get('title_short'),
-            'description': video_data.get('description_long') or video_data.get('description_short'),
-            'thumbnail': video_data.get('brightcove_thumbnail')
-        }
-        asset = setup.get('asset') or setup.get('params') or {}
-
-        formats = []
-        hls_url = asset.get('hls_url')
-        if hls_url:
-            formats.extend(self._extract_m3u8_formats(
-                hls_url, video_id, 'mp4', 'm3u8_native', m3u8_id='hls', fatal=False))
-        mp4_url = asset.get('mp4_url')
-        if mp4_url:
-            tbr = self._search_regex(r'-(\d+)k\.', mp4_url, 'bitrate', default=None)
-            format_id = 'http'
-            if tbr:
-                format_id += '-' + tbr
-            formats.append({
-                'format_id': format_id,
-                'url': mp4_url,
-                'tbr': int_or_none(tbr),
-            })
-        if formats:
-            self._sort_formats(formats)
-            info['formats'] = formats
-            return info
-
+        video_data = self._parse_json(self._search_regex(
+            r'Volume\.createVideo\(({.+})\s*,\s*{.*}\s*,\s*\[.*\]\s*,\s*{.*}\);', webpage, 'video data'), video_id)
         for provider_video_type in ('ooyala', 'youtube', 'brightcove'):
             provider_video_id = video_data.get('%s_id' % provider_video_type)
             if not provider_video_id:
                 continue
+            info = {
+                'id': video_id,
+                'title': video_data.get('title_short'),
+                'description': video_data.get('description_long') or video_data.get('description_short'),
+                'thumbnail': video_data.get('brightcove_thumbnail')
+            }
             if provider_video_type == 'brightcove':
                 info['formats'] = self._extract_once_formats(provider_video_id)
                 self._sort_formats(info['formats'])
@@ -67,49 +39,46 @@ class VoxMediaVolumeIE(OnceIE):
 
 
 class VoxMediaIE(InfoExtractor):
-    _VALID_URL = r'https?://(?:www\.)?(?:(?:theverge|vox|sbnation|eater|polygon|curbed|racked|funnyordie)\.com|recode\.net)/(?:[^/]+/)*(?P<id>[^/?]+)'
+    _VALID_URL = r'https?://(?:www\.)?(?:(?:theverge|vox|sbnation|eater|polygon|curbed|racked)\.com|recode\.net)/(?:[^/]+/)*(?P<id>[^/?]+)'
     _TESTS = [{
-        # Volume embed, Youtube
         'url': 'http://www.theverge.com/2014/6/27/5849272/material-world-how-google-discovered-what-software-is-made-of',
         'info_dict': {
-            'id': 'j4mLW6x17VM',
+            'id': '11eXZobjrG8DCSTgrNjVinU-YmmdYjhe',
             'ext': 'mp4',
-            'title': 'Material world: how Google discovered what software is made of',
-            'description': 'md5:dfc17e7715e3b542d66e33a109861382',
-            'upload_date': '20190710',
-            'uploader_id': 'TheVerge',
-            'uploader': 'The Verge',
+            'title': 'Google\'s new material design direction',
+            'description': 'md5:2f44f74c4d14a1f800ea73e1c6832ad2',
         },
-        'add_ie': ['Youtube'],
+        'params': {
+            # m3u8 download
+            'skip_download': True,
+        },
+        'add_ie': ['Ooyala'],
     }, {
-        # Volume embed, Youtube
+        # data-ooyala-id
         'url': 'http://www.theverge.com/2014/10/21/7025853/google-nexus-6-hands-on-photos-video-android-phablet',
-        'md5': '4c8f4a0937752b437c3ebc0ed24802b5',
+        'md5': 'd744484ff127884cd2ba09e3fa604e4b',
         'info_dict': {
-            'id': 'Gy8Md3Eky38',
+            'id': 'RkZXU4cTphOCPDMZg5oEounJyoFI0g-B',
             'ext': 'mp4',
             'title': 'The Nexus 6: hands-on with Google\'s phablet',
-            'description': 'md5:d9f0216e5fb932dd2033d6db37ac3f1d',
-            'uploader_id': 'TheVerge',
-            'upload_date': '20141021',
-            'uploader': 'The Verge',
+            'description': 'md5:87a51fe95ff8cea8b5bdb9ac7ae6a6af',
         },
-        'add_ie': ['Youtube'],
-        'skip': 'similar to the previous test',
+        'add_ie': ['Ooyala'],
+        'skip': 'Video Not Found',
     }, {
-        # Volume embed, Youtube
+        # volume embed
         'url': 'http://www.vox.com/2016/3/31/11336640/mississippi-lgbt-religious-freedom-bill',
         'info_dict': {
-            'id': 'YCjDnX-Xzhg',
+            'id': 'wydzk3dDpmRz7PQoXRsTIX6XTkPjYL0b',
             'ext': 'mp4',
-            'title': "Mississippi's laws are so bad that its anti-LGBTQ law isn't needed to allow discrimination",
-            'description': 'md5:fc1317922057de31cd74bce91eb1c66c',
-            'uploader_id': 'voxdotcom',
-            'upload_date': '20150915',
-            'uploader': 'Vox',
+            'title': 'The new frontier of LGBTQ civil rights, explained',
+            'description': 'md5:0dc58e94a465cbe91d02950f770eb93f',
         },
-        'add_ie': ['Youtube'],
-        'skip': 'similar to the previous test',
+        'params': {
+            # m3u8 download
+            'skip_download': True,
+        },
+        'add_ie': ['Ooyala'],
     }, {
         # youtube embed
         'url': 'http://www.vox.com/2016/3/24/11291692/robot-dance',
@@ -124,7 +93,6 @@ class VoxMediaIE(InfoExtractor):
             'uploader': 'Vox',
         },
         'add_ie': ['Youtube'],
-        'skip': 'Page no longer contain videos',
     }, {
         # SBN.VideoLinkset.entryGroup multiple ooyala embeds
         'url': 'http://www.sbnation.com/college-football-recruiting/2015/2/3/7970291/national-signing-day-rationalizations-itll-be-ok-itll-be-ok',
@@ -150,11 +118,10 @@ class VoxMediaIE(InfoExtractor):
                 'description': 'md5:e02d56b026d51aa32c010676765a690d',
             },
         }],
-        'skip': 'Page no longer contain videos',
     }, {
         # volume embed, Brightcove Once
         'url': 'https://www.recode.net/2014/6/17/11628066/post-post-pc-ceo-the-full-code-conference-video-of-microsofts-satya',
-        'md5': '2dbc77b8b0bff1894c2fce16eded637d',
+        'md5': '01571a896281f77dc06e084138987ea2',
         'info_dict': {
             'id': '1231c973d',
             'ext': 'mp4',
