@@ -6,6 +6,7 @@ from ..utils import (
     ExtractorError,
     remove_end,
 )
+from .rudo import RudoIE
 
 
 class BioBioChileTVIE(InfoExtractor):
@@ -40,15 +41,11 @@ class BioBioChileTVIE(InfoExtractor):
     }, {
         'url': 'http://www.biobiochile.cl/noticias/bbtv/comentarios-bio-bio/2016/07/08/edecanes-del-congreso-figuras-decorativas-que-le-cuestan-muy-caro-a-los-chilenos.shtml',
         'info_dict': {
-            'id': 'b4xd0LK3SK',
+            'id': 'edecanes-del-congreso-figuras-decorativas-que-le-cuestan-muy-caro-a-los-chilenos',
             'ext': 'mp4',
-            # TODO: fix url_transparent information overriding
-            # 'uploader': 'Juan Pablo Echenique',
-            'title': 'Comentario Oscar Cáceres',
-        },
-        'params': {
-            # empty m3u8 manifest
-            'skip_download': True,
+            'uploader': '(none)',
+            'upload_date': '20160708',
+            'title': 'Edecanes del Congreso: Figuras decorativas que le cuestan muy caro a los chilenos',
         },
     }, {
         'url': 'http://tv.biobiochile.cl/notas/2015/10/22/ninos-transexuales-de-quien-es-la-decision.shtml',
@@ -63,9 +60,7 @@ class BioBioChileTVIE(InfoExtractor):
 
         webpage = self._download_webpage(url, video_id)
 
-        rudo_url = self._search_regex(
-            r'<iframe[^>]+src=(?P<q1>[\'"])(?P<url>(?:https?:)?//rudo\.video/vod/[0-9a-zA-Z]+)(?P=q1)',
-            webpage, 'embed URL', None, group='url')
+        rudo_url = RudoIE._extract_url(webpage)
         if not rudo_url:
             raise ExtractorError('No videos found')
 
@@ -73,7 +68,7 @@ class BioBioChileTVIE(InfoExtractor):
 
         thumbnail = self._og_search_thumbnail(webpage)
         uploader = self._html_search_regex(
-            r'<a[^>]+href=["\'](?:https?://(?:busca|www)\.biobiochile\.cl)?/(?:lista/)?(?:author|autor)[^>]+>(.+?)</a>',
+            r'<a[^>]+href=["\']https?://(?:busca|www)\.biobiochile\.cl/(?:lista/)?(?:author|autor)[^>]+>(.+?)</a>',
             webpage, 'uploader', fatal=False)
 
         return {
