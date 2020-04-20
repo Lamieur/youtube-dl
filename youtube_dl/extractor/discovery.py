@@ -5,8 +5,14 @@ import re
 import string
 
 from .discoverygo import DiscoveryGoBaseIE
-from ..compat import compat_urllib_parse_unquote
-from ..utils import ExtractorError
+from ..compat import (
+    compat_str,
+    compat_urllib_parse_unquote,
+)
+from ..utils import (
+    ExtractorError,
+    try_get,
+)
 from ..compat import compat_HTTPError
 
 
@@ -34,15 +40,15 @@ class DiscoveryIE(DiscoveryGoBaseIE):
                     cookingchanneltv|
                     motortrend
                 )
-        )\.com/tv-shows/[^/]+/(?:video|full-episode)s/(?P<id>[^./?#]+)'''
+        )\.com(?P<path>/tv-shows/[^/]+/(?:video|full-episode)s/(?P<id>[^./?#]+))'''
     _TESTS = [{
-        'url': 'https://go.discovery.com/tv-shows/cash-cab/videos/riding-with-matthew-perry',
+        'url': 'https://www.discovery.com/tv-shows/cash-cab/videos/dave-foley',
         'info_dict': {
-            'id': '5a2f35ce6b66d17a5026e29e',
+            'id': '5a2d9b4d6b66d17a5026e1fd',
             'ext': 'mp4',
-            'title': 'Riding with Matthew Perry',
-            'description': 'md5:a34333153e79bc4526019a5129e7f878',
-            'duration': 84,
+            'title': 'Dave Foley',
+            'description': 'md5:4b39bcafccf9167ca42810eb5f28b01f',
+            'duration': 608,
         },
         'params': {
             'skip_download': True,  # requires ffmpeg
@@ -56,10 +62,17 @@ class DiscoveryIE(DiscoveryGoBaseIE):
     }]
     _GEO_COUNTRIES = ['US']
     _GEO_BYPASS = False
-    _API_BASE_URL = 'https://api.discovery.com/v1/'
 
     def _real_extract(self, url):
-        site, display_id = re.match(self._VALID_URL, url).groups()
+        site, path, display_id = re.match(self._VALID_URL, url).groups()
+        webpage = self._download_webpage(url, display_id)
+
+        react_data = self._parse_json(self._search_regex(
+            r'window\.__reactTransmitPacket\s*=\s*({.+?});',
+            webpage, 'react data'), display_id)
+        content_blocks = react_data['layout'][path]['contentBlocks']
+        video = next(cb for cb in content_blocks if cb.get('type') == 'video')['content']['items'][0]
+        video_id = video['id']
 
         access_token = None
         cookies = self._get_cookies(url)
@@ -69,33 +82,27 @@ class DiscoveryIE(DiscoveryGoBaseIE):
         if auth_storage_cookie and auth_storage_cookie.value:
             auth_storage = self._parse_json(compat_urllib_parse_unquote(
                 compat_urllib_parse_unquote(auth_storage_cookie.value)),
-                display_id, fatal=False) or {}
+                video_id, fatal=False) or {}
             access_token = auth_storage.get('a') or auth_storage.get('access_token')
 
         if not access_token:
             access_token = self._download_json(
-                'https://%s.com/anonymous' % site, display_id,
-                'Downloading token JSON metadata', query={
+                'https://%s.com/anonymous' % site, display_id, query={
                     'authRel': 'authorization',
-                    'client_id': '3020a40c2356a645b4b4',
+                    'client_id': try_get(
+                        react_data, lambda x: x['application']['apiClientId'],
+                        compat_str) or '3020a40c2356a645b4b4',
                     'nonce': ''.join([random.choice(string.ascii_letters) for _ in range(32)]),
                     'redirectUri': 'https://fusion.ddmcdn.com/app/mercury-sdk/180/redirectHandler.html?https://www.%s.com' % site,
                 })['access_token']
 
-        headers = self.geo_verification_headers()
-        headers['Authorization'] = 'Bearer ' + access_token
-
         try:
-            video = self._download_json(
-                self._API_BASE_URL + 'content/videos',
-                display_id, 'Downloading content JSON metadata',
-                headers=headers, query={
-                    'slug': display_id,
-                })[0]
-            video_id = video['id']
+            headers = self.geo_verification_headers()
+            headers['Authorization'] = 'Bearer ' + access_token
+
             stream = self._download_json(
-                self._API_BASE_URL + 'streaming/video/' + video_id,
-                display_id, 'Downloading streaming JSON metadata', headers=headers)
+                'https://api.discovery.com/v1/streaming/video/' + video_id,
+                display_id, headers=headers)
         except ExtractorError as e:
             if isinstance(e.cause, compat_HTTPError) and e.cause.code in (401, 403):
                 e_description = self._parse_json(
