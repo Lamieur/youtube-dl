@@ -1,4 +1,4 @@
-version 2019.07.30
+version <unreleased>
 
 Extractors
 * [youtube] Fix and improve title and description extraction (#21934)
