@@ -33,10 +33,6 @@ class BeegIE(InfoExtractor):
         'url': 'https://beeg.com/1941093077?t=911-1391',
         'only_matching': True,
     }, {
-        # api/v6 v2 w/o t
-        'url': 'https://beeg.com/1277207756',
-        'only_matching': True,
-    }, {
         'url': 'https://beeg.porn/video/5416503',
         'only_matching': True,
     }, {
@@ -53,17 +49,14 @@ class BeegIE(InfoExtractor):
             r'beeg_version\s*=\s*([\da-zA-Z_-]+)', webpage, 'beeg version',
             default='1546225636701')
 
-        if len(video_id) >= 10:
+        qs = compat_urlparse.parse_qs(compat_urlparse.urlparse(url).query)
+        t = qs.get('t', [''])[0].split('-')
+        if len(t) > 1:
             query = {
                 'v': 2,
+                's': t[0],
+                'e': t[1],
             }
-            qs = compat_urlparse.parse_qs(compat_urlparse.urlparse(url).query)
-            t = qs.get('t', [''])[0].split('-')
-            if len(t) > 1:
-                query.update({
-                    's': t[0],
-                    'e': t[1],
-                })
         else:
             query = {'v': 1}
 
