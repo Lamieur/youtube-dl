@@ -581,6 +581,7 @@
  - **NextTV**: 壹電視
  - **Nexx**
  - **NexxEmbed**
+ - **nfb**: National Film Board of Canada
  - **nfl.com**
  - **NhkVod**
  - **nhl.com**
@@ -691,9 +692,8 @@
  - **PornerBros**
  - **PornHd**
  - **PornHub**: PornHub and Thumbzilla
- - **PornHubPagedVideoList**
- - **PornHubUser**
- - **PornHubUserVideosUpload**
+ - **PornHubPlaylist**
+ - **PornHubUserVideos**
  - **Pornotube**
  - **PornoVoisines**
  - **PornoXO**
