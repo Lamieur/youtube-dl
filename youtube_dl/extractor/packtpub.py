@@ -5,27 +5,26 @@ import re
 
 from .common import InfoExtractor
 from ..compat import (
-    # compat_str,
+    compat_str,
     compat_HTTPError,
 )
 from ..utils import (
     clean_html,
     ExtractorError,
-    # remove_end,
-    str_or_none,
+    remove_end,
     strip_or_none,
     unified_timestamp,
-    # urljoin,
+    urljoin,
 )
 
 
 class PacktPubBaseIE(InfoExtractor):
-    # _PACKT_BASE = 'https://www.packtpub.com'
-    _STATIC_PRODUCTS_BASE = 'https://static.packt-cdn.com/products/'
+    _PACKT_BASE = 'https://www.packtpub.com'
+    _MAPT_REST = '%s/mapt-rest' % _PACKT_BASE
 
 
 class PacktPubIE(PacktPubBaseIE):
-    _VALID_URL = r'https?://(?:(?:www\.)?packtpub\.com/mapt|subscription\.packtpub\.com)/video/[^/]+/(?P<course_id>\d+)/(?P<chapter_id>\d+)/(?P<id>\d+)(?:/(?P<display_id>[^/?&#]+))?'
+    _VALID_URL = r'https?://(?:(?:www\.)?packtpub\.com/mapt|subscription\.packtpub\.com)/video/[^/]+/(?P<course_id>\d+)/(?P<chapter_id>\d+)/(?P<id>\d+)'
 
     _TESTS = [{
         'url': 'https://www.packtpub.com/mapt/video/web-development/9781787122215/20528/20530/Project+Intro',
@@ -51,9 +50,9 @@ class PacktPubIE(PacktPubBaseIE):
             return
         try:
             self._TOKEN = self._download_json(
-                'https://services.packtpub.com/auth-v1/users/tokens', None,
+                self._MAPT_REST + '/users/tokens', None,
                 'Downloading Authorization Token', data=json.dumps({
-                    'username': username,
+                    'email': username,
                     'password': password,
                 }).encode())['data']['access']
         except ExtractorError as e:
@@ -62,40 +61,54 @@ class PacktPubIE(PacktPubBaseIE):
                 raise ExtractorError(message, expected=True)
             raise
 
+    def _handle_error(self, response):
+        if response.get('status') != 'success':
+            raise ExtractorError(
+                '% said: %s' % (self.IE_NAME, response['message']),
+                expected=True)
+
+    def _download_json(self, *args, **kwargs):
+        response = super(PacktPubIE, self)._download_json(*args, **kwargs)
+        self._handle_error(response)
+        return response
+
     def _real_extract(self, url):
-        course_id, chapter_id, video_id, display_id = re.match(self._VALID_URL, url).groups()
+        mobj = re.match(self._VALID_URL, url)
+        course_id, chapter_id, video_id = mobj.group(
+            'course_id', 'chapter_id', 'id')
 
         headers = {}
         if self._TOKEN:
             headers['Authorization'] = 'Bearer ' + self._TOKEN
-        try:
-            video_url = self._download_json(
-                'https://services.packtpub.com/products-v1/products/%s/%s/%s' % (course_id, chapter_id, video_id), video_id,
-                'Downloading JSON video', headers=headers)['data']
-        except ExtractorError as e:
-            if isinstance(e.cause, compat_HTTPError) and e.cause.code == 400:
-                self.raise_login_required('This video is locked')
-            raise
+        video = self._download_json(
+            '%s/users/me/products/%s/chapters/%s/sections/%s'
+            % (self._MAPT_REST, course_id, chapter_id, video_id), video_id,
+            'Downloading JSON video', headers=headers)['data']
 
-        # TODO: find a better way to avoid duplicating course requests
-        # metadata = self._download_json(
-        #     '%s/products/%s/chapters/%s/sections/%s/metadata'
-        #     % (self._MAPT_REST, course_id, chapter_id, video_id),
-        #     video_id)['data']
+        content = video.get('content')
+        if not content:
+            self.raise_login_required('This video is locked')
 
-        # title = metadata['pageTitle']
-        # course_title = metadata.get('title')
-        # if course_title:
-        #     title = remove_end(title, ' - %s' % course_title)
-        # timestamp = unified_timestamp(metadata.get('publicationDate'))
-        # thumbnail = urljoin(self._PACKT_BASE, metadata.get('filepath'))
+        video_url = content['file']
+
+        metadata = self._download_json(
+            '%s/products/%s/chapters/%s/sections/%s/metadata'
+            % (self._MAPT_REST, course_id, chapter_id, video_id),
+            video_id)['data']
+
+        title = metadata['pageTitle']
+        course_title = metadata.get('title')
+        if course_title:
+            title = remove_end(title, ' - %s' % course_title)
+        timestamp = unified_timestamp(metadata.get('publicationDate'))
+        thumbnail = urljoin(self._PACKT_BASE, metadata.get('filepath'))
 
         return {
             'id': video_id,
             'url': video_url,
-            'title': display_id or video_id,  # title,
-            # 'thumbnail': thumbnail,
-            # 'timestamp': timestamp,
+            'title': title,
+            'thumbnail': thumbnail,
+            'timestamp': timestamp,
         }
 
 
@@ -106,7 +119,6 @@ class PacktPubCourseIE(PacktPubBaseIE):
         'info_dict': {
             'id': '9781787122215',
             'title': 'Learn Nodejs by building 12 projects [Video]',
-            'description': 'md5:489da8d953f416e51927b60a1c7db0aa',
         },
         'playlist_count': 90,
     }, {
@@ -124,38 +136,35 @@ class PacktPubCourseIE(PacktPubBaseIE):
         url, course_id = mobj.group('url', 'id')
 
         course = self._download_json(
-            self._STATIC_PRODUCTS_BASE + '%s/toc' % course_id, course_id)
-        metadata = self._download_json(
-            self._STATIC_PRODUCTS_BASE + '%s/summary' % course_id,
-            course_id, fatal=False) or {}
+            '%s/products/%s/metadata' % (self._MAPT_REST, course_id),
+            course_id)['data']
 
         entries = []
-        for chapter_num, chapter in enumerate(course['chapters'], 1):
-            chapter_id = str_or_none(chapter.get('id'))
-            sections = chapter.get('sections')
-            if not chapter_id or not isinstance(sections, list):
+        for chapter_num, chapter in enumerate(course['tableOfContents'], 1):
+            if chapter.get('type') != 'chapter':
+                continue
+            children = chapter.get('children')
+            if not isinstance(children, list):
                 continue
             chapter_info = {
                 'chapter': chapter.get('title'),
                 'chapter_number': chapter_num,
-                'chapter_id': chapter_id,
+                'chapter_id': chapter.get('id'),
             }
-            for section in sections:
-                section_id = str_or_none(section.get('id'))
-                if not section_id or section.get('contentType') != 'video':
+            for section in children:
+                if section.get('type') != 'section':
+                    continue
+                section_url = section.get('seoUrl')
+                if not isinstance(section_url, compat_str):
                     continue
                 entry = {
                     '_type': 'url_transparent',
-                    'url': '/'.join([url, chapter_id, section_id]),
+                    'url': urljoin(url + '/', section_url),
                     'title': strip_or_none(section.get('title')),
                     'description': clean_html(section.get('summary')),
-                    'thumbnail': metadata.get('coverImage'),
-                    'timestamp': unified_timestamp(metadata.get('publicationDate')),
                     'ie_key': PacktPubIE.ie_key(),
                 }
                 entry.update(chapter_info)
                 entries.append(entry)
 
-        return self.playlist_result(
-            entries, course_id, metadata.get('title'),
-            clean_html(metadata.get('about')))
+        return self.playlist_result(entries, course_id, course.get('title'))
